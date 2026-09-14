@@ -1,0 +1,11 @@
+import React from 'react';
+
+const ErrorLayout = ({ children }) => {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-lg text-center">{children}</div>
+    </div>
+  );
+};
+
+export default ErrorLayout;
