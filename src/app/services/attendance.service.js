@@ -1,94 +1,102 @@
-import { mockDb } from './mockDb';
+import api from './api';
 
-const populateAttendance = (att, emps, depts, positions) => {
-  const emp = emps.find((e) => e._id === att.employee) || att.employee;
-  let populatedEmp = emp;
-  if (typeof emp === 'object' && emp !== null) {
-    const dept = depts.find((d) => d._id === emp.department) || emp.department;
-    const pos = positions.find((p) => p._id === emp.position) || emp.position;
-    populatedEmp = { ...emp, department: dept, position: pos };
-  }
+const normalizeAttendance = (att) => {
+  if (!att) return null;
 
   return {
     ...att,
-    employee: populatedEmp,
+    _id: att.id?.toString() || att._id,
+    id: att.id,
+    employee: typeof att.employee === 'object' ? att.employee : {
+      _id: att.employee?.toString(),
+      id: att.employee,
+      firstName: att.employee_name?.split(' ')[0] || 'Employé',
+      lastName: att.employee_name?.split(' ').slice(1).join(' ') || '',
+    },
+    employeeName: att.employee_name || 'Employé',
+    date: att.date,
+    checkIn: att.check_in || att.checkIn,
+    checkOut: att.check_out || att.checkOut,
+    status: (att.status || 'PRESENT').toLowerCase(),
+    note: att.note || '',
+    createdAt: att.created_at,
   };
 };
 
 const attendanceService = {
-  async getAttendances(date) {
-    await mockDb.delay();
-    const attendances = mockDb.getAttendances();
-    const emps = mockDb.getEmployees();
-    const depts = mockDb.getDepartments();
-    const positions = mockDb.getPositions();
+  async getAttendances(params = {}) {
+    const apiParams = {};
+    if (params.date) apiParams.date = params.date;
+    if (params.employee) apiParams.employee = params.employee;
+    if (params.status) apiParams.status = params.status.toUpperCase();
+    if (params.page) apiParams.page = params.page;
 
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const response = await api.get('/attendance/', { params: apiParams });
+    const rawList = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.results || []);
 
-    // Filter by date
-    let filtered = attendances.filter((a) => a.date === targetDate);
-
-    // If an employee doesn't have an attendance record for this date, auto-create a default 'absent' / unrecorded record so they appear in the UI
-    const activeEmps = emps.filter(e => e.status === 'active' || e.status === 'on_leave');
-    activeEmps.forEach((emp) => {
-      const exists = filtered.find(a => (typeof a.employee === 'object' ? a.employee._id : a.employee) === emp._id);
-      if (!exists) {
-        const newRecord = {
-          _id: mockDb.generateId('att'),
-          employee: emp._id,
-          date: targetDate,
-          checkIn: null,
-          checkOut: null,
-          status: emp.status === 'on_leave' ? 'on_leave' : 'absent',
-          workHours: 0,
-          notes: '',
-          createdAt: new Date().toISOString(),
-        };
-        attendances.push(newRecord);
-        filtered.push(newRecord);
-      }
-    });
-
-    mockDb.saveAttendances(attendances);
-
-    const populated = filtered.map((a) => populateAttendance(a, emps, depts, positions));
+    const data = rawList.map(normalizeAttendance);
 
     return {
       success: true,
-      data: populated,
+      data,
+      count: response.data?.count || data.length,
+    };
+  },
+
+  async getAttendance(id) {
+    const response = await api.get(`/attendance/${id}/`);
+    return {
+      success: true,
+      data: normalizeAttendance(response.data),
+    };
+  },
+
+  async createAttendance(data) {
+    const payload = {
+      employee: typeof data.employee === 'object' 
+        ? parseInt(data.employee.id || data.employee._id, 10) 
+        : parseInt(data.employee, 10),
+      date: data.date || new Date().toISOString().split('T')[0],
+      check_in: data.checkIn || data.check_in || '08:30:00',
+      check_out: data.checkOut || data.check_out || null,
+      status: (data.status || 'PRESENT').toUpperCase(),
+      note: data.note || data.notes || '',
+    };
+
+    const response = await api.post('/attendance/', payload);
+    return {
+      success: true,
+      message: 'Pointage enregistré',
+      data: normalizeAttendance(response.data),
     };
   },
 
   async logAttendance(data) {
-    await mockDb.delay();
-    const attendances = mockDb.getAttendances();
+    return this.createAttendance(data);
+  },
 
-    const idx = attendances.findIndex(
-      (a) => (typeof a.employee === 'object' ? a.employee._id : a.employee) === data.employee && a.date === data.date
-    );
+  async updateAttendance(id, data) {
+    const payload = {};
+    if (data.status) payload.status = data.status.toUpperCase();
+    if (data.checkIn || data.check_in) payload.check_in = data.checkIn || data.check_in;
+    if (data.checkOut || data.check_out) payload.check_out = data.checkOut || data.check_out;
+    if (data.note !== undefined) payload.note = data.note;
 
-    let record;
-    if (idx !== -1) {
-      attendances[idx] = {
-        ...attendances[idx],
-        ...data,
-      };
-      record = attendances[idx];
-    } else {
-      record = {
-        _id: mockDb.generateId('att'),
-        ...data,
-        createdAt: new Date().toISOString(),
-      };
-      attendances.push(record);
-    }
-
-    mockDb.saveAttendances(attendances);
-
+    const response = await api.patch(`/attendance/${id}/`, payload);
     return {
       success: true,
-      message: 'Pointage enregistré avec succès',
-      data: record,
+      message: 'Pointage mis à jour',
+      data: normalizeAttendance(response.data),
+    };
+  },
+
+  async deleteAttendance(id) {
+    await api.delete(`/attendance/${id}/`);
+    return {
+      success: true,
+      message: 'Pointage supprimé',
     };
   },
 };

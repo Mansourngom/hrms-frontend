@@ -1,126 +1,78 @@
-import { mockDb } from './mockDb';
+import api from './api';
 
-const populateDepartment = (dept, emps) => {
-  const manager = emps.find((e) => e._id === dept.manager) || dept.manager;
-  return {
-    ...dept,
-    manager,
-  };
-};
+const normalizeDepartment = (dept) => ({
+  ...dept,
+  _id: dept.id?.toString() || dept._id,
+  id: dept.id,
+  name: dept.name,
+  description: dept.description || '',
+  budget: dept.budget ? parseFloat(dept.budget) : 0,
+  manager: dept.manager,
+  managerName: dept.manager_name || 'Non assigné',
+  employeeCount: dept.employee_count || 0,
+  createdAt: dept.created_at,
+});
 
 const departmentService = {
   async getDepartments(params = {}) {
-    await mockDb.delay();
-    const depts = mockDb.getDepartments();
-    const emps = mockDb.getEmployees();
+    const response = await api.get('/departments/', { params });
+    const rawList = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.results || []);
 
-    const populated = depts.map((d) => populateDepartment(d, emps));
+    const data = rawList.map(normalizeDepartment);
 
     return {
       success: true,
-      data: populated,
+      data,
+      count: response.data?.count || data.length,
     };
   },
 
   async getDepartment(id) {
-    await mockDb.delay();
-    const depts = mockDb.getDepartments();
-    const emps = mockDb.getEmployees();
-
-    const dept = depts.find((d) => d._id === id);
-    if (!dept) {
-      throw {
-        response: {
-          data: { message: 'Département introuvable' }
-        }
-      };
-    }
-
-    const populated = populateDepartment(dept, emps);
-
+    const response = await api.get(`/departments/${id}/`);
     return {
       success: true,
-      data: populated,
+      data: normalizeDepartment(response.data),
     };
   },
 
   async createDepartment(data) {
-    await mockDb.delay();
-    const depts = mockDb.getDepartments();
-
-    // Check code unique
-    if (depts.some((d) => d.code.toUpperCase() === data.code.toUpperCase())) {
-      throw {
-        response: {
-          data: { message: 'Ce code de département est déjà utilisé' }
-        }
-      };
-    }
-
-    const newDept = {
-      ...data,
-      _id: mockDb.generateId('dept'),
-      isActive: true,
-      createdAt: new Date().toISOString(),
+    const payload = {
+      name: data.name,
+      description: data.description || '',
+      budget: data.budget ? data.budget.toString() : '0',
+      manager: data.manager ? parseInt(data.manager, 10) : null,
     };
 
-    depts.push(newDept);
-    mockDb.saveDepartments(depts);
-
+    const response = await api.post('/departments/', payload);
     return {
       success: true,
       message: 'Département créé avec succès',
-      data: newDept,
+      data: normalizeDepartment(response.data),
     };
   },
 
   async updateDepartment(id, data) {
-    await mockDb.delay();
-    const depts = mockDb.getDepartments();
-    const idx = depts.findIndex((d) => d._id === id);
+    const payload = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.budget !== undefined) payload.budget = data.budget.toString();
+    if (data.manager !== undefined) payload.manager = data.manager ? parseInt(data.manager, 10) : null;
 
-    if (idx === -1) {
-      throw {
-        response: {
-          data: { message: 'Département introuvable' }
-        }
-      };
-    }
-
-    const updated = {
-      ...depts[idx],
-      ...data,
-      _id: id,
-    };
-
-    depts[idx] = updated;
-    mockDb.saveDepartments(depts);
-
+    const response = await api.patch(`/departments/${id}/`, payload);
     return {
       success: true,
       message: 'Département mis à jour',
-      data: updated,
+      data: normalizeDepartment(response.data),
     };
   },
 
   async deleteDepartment(id) {
-    await mockDb.delay();
-    const depts = mockDb.getDepartments();
-    const filtered = depts.filter((d) => d._id !== id);
-
-    if (depts.length === filtered.length) {
-      throw {
-        response: {
-          data: { message: 'Département introuvable' }
-        }
-      };
-    }
-
-    mockDb.saveDepartments(filtered);
-
+    await api.delete(`/departments/${id}/`);
     return {
       success: true,
-      message: 'Département supprimé avec succès',
+      message: 'Département supprimé',
     };
   },
 };

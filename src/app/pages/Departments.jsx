@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import departmentService from '../services/department.service';
 import employeeService from '../services/employee.service';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Plus, Edit2, Trash2, Shield, DollarSign, Users, Award, X, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const Departments = () => {
   const { t } = useLanguage();
+  const { user, activeRole } = useAuth();
+  const isAdmin = (user?.role === 'admin') || (activeRole === 'admin');
+
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,8 +85,8 @@ const Departments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.code) {
-      toast.error('Le nom et le code sont obligatoires');
+    if (!formData.name) {
+      toast.error('Le nom du département est obligatoire');
       return;
     }
 
@@ -119,15 +123,15 @@ const Departments = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Départements</h2>
-          <p className="text-sm text-slate-500 font-medium">Gérez la structure hiérarchique et les budgets de votre entreprise.</p>
-        </div>
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-all shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Ajouter un département
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-all shadow-sm cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter un département
+          </button>
+        )}
       </div>
 
       {/* Grid Summary */}
@@ -180,13 +184,13 @@ const Departments = () => {
                   <th className="py-4">Description</th>
                   <th className="py-4">Chef de Département</th>
                   <th className="py-4">Budget</th>
-                  <th className="py-4 text-right">Actions</th>
+                  {isAdmin && <th className="py-4 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {departments.map((dept) => (
                   <tr key={dept._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 font-bold text-slate-700">{dept.code}</td>
+                    <td className="py-4 font-bold text-slate-700">{dept.code || '-'}</td>
                     <td className="py-4 font-bold text-slate-900">{dept.name}</td>
                     <td className="py-4 text-slate-500 max-w-[200px] truncate" title={dept.description}>
                       {dept.description || '-'}
@@ -196,7 +200,7 @@ const Departments = () => {
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
                           <span className="font-semibold text-slate-700">
-                            {typeof dept.manager === 'object' ? `${dept.manager.firstName} ${dept.manager.lastName}` : dept.manager}
+                            {typeof dept.manager === 'object' ? `${dept.manager.firstName} ${dept.manager.lastName}` : (dept.managerName || dept.manager)}
                           </span>
                         </div>
                       ) : (
@@ -206,20 +210,24 @@ const Departments = () => {
                     <td className="py-4 font-bold text-slate-800">
                       {(dept.budget || 0).toLocaleString('fr-FR')} F CFA
                     </td>
-                    <td className="py-4 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenEdit(dept)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(dept._id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-rose-200 hover:text-rose-600 transition-all"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
+                    {isAdmin && (
+                      <td className="py-4 text-right space-x-2">
+                        <button
+                          onClick={() => handleOpenEdit(dept)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
+                          title="Modifier"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(dept._id)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-rose-200 hover:text-rose-600 transition-all cursor-pointer"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

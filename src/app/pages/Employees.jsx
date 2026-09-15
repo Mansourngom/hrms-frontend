@@ -5,6 +5,7 @@ import departmentService from '../services/department.service';
 import positionService from '../services/position.service';
 import uploadService from '../services/upload.service';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Plus, Search, SlidersHorizontal, Eye, Edit2, Archive, CheckCircle, 
   Trash2, Mail, Phone, MapPin, X, Upload, User, ArrowRight, ArrowLeft 
@@ -13,6 +14,8 @@ import { toast } from 'react-hot-toast';
 
 const Employees = () => {
   const { t } = useLanguage();
+  const { user, activeRole } = useAuth();
+  const isAdmin = (user?.role === 'admin') || (activeRole === 'admin');
   const navigate = useNavigate();
 
   const [employees, setEmployees] = useState([]);
@@ -265,29 +268,10 @@ const Employees = () => {
     }
 
     setUploading(true);
-    let finalPhoto = editingEmployee?.photo || null;
-
     try {
-      // If there is an avatar file, upload to Cloudinary first
-      if (avatarFile) {
-        toast.loading("Téléversement de l'image de profil...");
-        const uploadRes = await uploadService.uploadFile(
-          avatarFile,
-          `Avatar - ${formData.firstName} ${formData.lastName}`,
-          'other'
-        );
-        toast.dismiss();
-        if (uploadRes.success && uploadRes.data?.file) {
-          finalPhoto = {
-            url: uploadRes.data.file.url,
-            publicId: uploadRes.data.file.publicId || uploadRes.data.file.public_id,
-          };
-        }
-      }
-
       const payload = {
         ...formData,
-        photo: finalPhoto,
+        avatarFile: avatarFile || null,
       };
 
       if (editingEmployee) {
@@ -302,7 +286,8 @@ const Employees = () => {
     } catch (error) {
       console.error(error);
       toast.dismiss();
-      toast.error(error.response?.data?.message || "Erreur lors de l'enregistrement");
+      const msg = error.message || error.response?.data?.detail || error.response?.data?.message || "Erreur lors de l'enregistrement";
+      toast.error(msg);
     } finally {
       setUploading(false);
     }
@@ -327,13 +312,15 @@ const Employees = () => {
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Annuaire des Employés</h2>
           <p className="text-sm text-slate-500 font-medium">Consultez, modifiez et gérez les fiches de vos collaborateurs.</p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-all shadow-sm shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          Ajouter un collaborateur
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-all shadow-sm shrink-0 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter un collaborateur
+          </button>
+        )}
       </div>
 
       {/* Filters Toolbar */}

@@ -1,131 +1,120 @@
-import { mockDb } from './mockDb';
+import api from './api';
 
-const populateLeave = (leave, emps, depts, positions) => {
-  const emp = emps.find((e) => e._id === leave.employee) || leave.employee;
-  let populatedEmp = emp;
-  if (typeof emp === 'object' && emp !== null) {
-    const dept = depts.find((d) => d._id === emp.department) || emp.department;
-    const pos = positions.find((p) => p._id === emp.position) || emp.position;
-    populatedEmp = { ...emp, department: dept, position: pos };
-  }
+const normalizeLeave = (leave) => {
+  if (!leave) return null;
 
   return {
     ...leave,
-    employee: populatedEmp,
+    _id: leave.id?.toString() || leave._id,
+    id: leave.id,
+    employee: typeof leave.employee === 'object' ? leave.employee : {
+      _id: leave.employee?.toString(),
+      id: leave.employee,
+      firstName: leave.employee_name?.split(' ')[0] || 'Collaborateur',
+      lastName: leave.employee_name?.split(' ').slice(1).join(' ') || '',
+    },
+    employeeName: leave.employee_name || 'Collaborateur',
+    type: (leave.leave_type || leave.type || 'ANNUAL').toLowerCase(),
+    leaveType: leave.leave_type || 'ANNUAL',
+    startDate: leave.start_date || leave.startDate,
+    endDate: leave.end_date || leave.endDate,
+    reason: leave.reason || '',
+    status: (leave.status || 'PENDING').toLowerCase(),
+    comment: leave.comment || '',
+    durationDays: leave.duration_days || 1,
+    createdAt: leave.created_at,
   };
 };
 
 const leaveService = {
   async getLeaves(params = {}) {
-    await mockDb.delay();
-    const leaves = mockDb.getLeaves();
-    const emps = mockDb.getEmployees();
-    const depts = mockDb.getDepartments();
-    const positions = mockDb.getPositions();
+    const apiParams = {};
+    if (params.status) apiParams.status = params.status.toUpperCase();
+    if (params.employee) apiParams.employee = params.employee;
+    if (params.leaveType) apiParams.leave_type = params.leaveType.toUpperCase();
+    if (params.page) apiParams.page = params.page;
 
-    let filtered = [...leaves];
-    if (params.status) {
-      filtered = filtered.filter(l => l.status === params.status);
-    }
-    if (params.type) {
-      filtered = filtered.filter(l => l.type === params.type);
-    }
+    const response = await api.get('/leaves/', { params: apiParams });
+    const rawList = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.results || []);
 
-    const populated = filtered.map((l) => populateLeave(l, emps, depts, positions));
+    const data = rawList.map(normalizeLeave);
 
     return {
       success: true,
-      data: populated,
+      data,
+      count: response.data?.count || data.length,
+    };
+  },
+
+  async getLeave(id) {
+    const response = await api.get(`/leaves/${id}/`);
+    return {
+      success: true,
+      data: normalizeLeave(response.data),
+    };
+  },
+
+  async createLeave(data) {
+    const payload = {
+      employee: typeof data.employee === 'object' 
+        ? parseInt(data.employee.id || data.employee._id, 10) 
+        : parseInt(data.employee, 10),
+      leave_type: (data.type || data.leaveType || data.leave_type || 'ANNUAL').toUpperCase(),
+      start_date: data.startDate || data.start_date,
+      end_date: data.endDate || data.end_date,
+      reason: data.reason || '',
+    };
+
+    const response = await api.post('/leaves/', payload);
+    return {
+      success: true,
+      message: 'Demande de congé soumise',
+      data: normalizeLeave(response.data),
     };
   },
 
   async createLeaveRequest(data) {
-    await mockDb.delay();
-    const leaves = mockDb.getLeaves();
-    const emps = mockDb.getEmployees();
+    return this.createLeave(data);
+  },
 
-    const emp = emps.find(e => e._id === data.employee);
-    if (!emp) {
-      throw {
-        response: {
-          data: { message: 'Collaborateur introuvable' }
-        }
-      };
+  async updateLeaveStatus(id, status, comment = '') {
+    if (status?.toLowerCase() === 'approved') {
+      return this.approveLeave(id, comment);
+    } else if (status?.toLowerCase() === 'rejected') {
+      return this.rejectLeave(id, comment);
     }
-
-    // Calculate days between start and end date
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    const diffTime = Math.abs(end - start);
-    const daysCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-    const newLeave = {
-      _id: mockDb.generateId('leave'),
-      employee: data.employee,
-      type: data.type || 'annual',
-      startDate: data.startDate,
-      endDate: data.endDate,
-      daysCount: daysCount > 0 ? daysCount : 1,
-      reason: data.reason || '',
-      status: 'pending',
-      managerComment: '',
-      createdAt: new Date().toISOString(),
-    };
-
-    leaves.unshift(newLeave);
-    mockDb.saveLeaves(leaves);
-
+    const response = await api.patch(`/leaves/${id}/`, { status: status.toUpperCase(), comment });
     return {
       success: true,
-      message: 'Demande de congé soumise avec succès',
-      data: newLeave,
+      data: normalizeLeave(response.data),
     };
   },
 
-  async updateLeaveStatus(id, status, managerComment = '') {
-    await mockDb.delay();
-    const leaves = mockDb.getLeaves();
-    const emps = mockDb.getEmployees();
-    const idx = leaves.findIndex((l) => l._id === id);
-
-    if (idx === -1) {
-      throw {
-        response: {
-          data: { message: 'Demande introuvable' }
-        }
-      };
-    }
-
-    const leave = leaves[idx];
-    leave.status = status;
-    if (managerComment) {
-      leave.managerComment = managerComment;
-    }
-
-    // If approved, deduct leave balance from employee
-    if (status === 'approved') {
-      const empIdx = emps.findIndex(e => e._id === leave.employee);
-      if (empIdx !== -1) {
-        const emp = emps[empIdx];
-        if (!emp.leaveBalance) emp.leaveBalance = { annual: 24, sick: 10, other: 0 };
-        
-        if (leave.type === 'annual') {
-          emp.leaveBalance.annual = Math.max(0, emp.leaveBalance.annual - leave.daysCount);
-        } else if (leave.type === 'sick') {
-          emp.leaveBalance.sick = Math.max(0, emp.leaveBalance.sick - leave.daysCount);
-        }
-        emps[empIdx] = emp;
-        mockDb.saveEmployees(emps);
-      }
-    }
-
-    leaves[idx] = leave;
-    mockDb.saveLeaves(leaves);
-
+  async approveLeave(id, comment = '') {
+    const response = await api.post(`/leaves/${id}/approve/`, { comment });
     return {
       success: true,
-      message: `Demande de congé ${status === 'approved' ? 'approuvée' : 'refusée'}`,
-      data: leave,
+      message: 'Demande de congé approuvée',
+      data: normalizeLeave(response.data),
+    };
+  },
+
+  async rejectLeave(id, comment = '') {
+    const response = await api.post(`/leaves/${id}/reject/`, { comment });
+    return {
+      success: true,
+      message: 'Demande de congé refusée',
+      data: normalizeLeave(response.data),
+    };
+  },
+
+  async deleteLeave(id) {
+    await api.delete(`/leaves/${id}/`);
+    return {
+      success: true,
+      message: 'Demande supprimée',
     };
   },
 };

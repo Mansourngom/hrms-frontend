@@ -4,13 +4,13 @@ import reportService from '../services/report.service';
 import employeeService from '../services/employee.service';
 import { mockDb } from '../services/mockDb';
 import {
-  Users, Calendar, Briefcase, ClipboardList, TrendingUp,
-  ArrowUpRight, UserPlus, FileCheck, Cake, Award
+  Users, Calendar, Briefcase, ClipboardList,
+  UserPlus, Send, FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
@@ -44,264 +44,313 @@ const Dashboard = () => {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
           <p className="text-sm font-medium text-slate-500">Chargement de votre tableau de bord...</p>
         </div>
       </div>
     );
   }
 
-  // ─── KPI Data ───────────────────────────────────
-  const totalEmployees = stats?.employees ?? employees.length ?? 0;
-  const leavesPending = stats?.leavesPending ?? 0;
-  const recruitments = stats?.recruitments ?? 0;
-  const pendingEvaluations = (mockDb.getGoals?.() || []).filter(g => g.status === 'in_progress').length || 3;
+  // ─── Stat KPI Cards ──────────────────────────────
+  const totalEmployees = stats?.employees || employees.length || 1248;
+  const onLeaveToday = stats?.leavesPending || 32;
+  const openPositions = stats?.recruitments || 18;
+  const pendingEvaluations = 45;
 
   const kpis = [
     {
-      title: 'Total Employés',
-      value: totalEmployees,
+      title: 'Total Employees',
+      value: totalEmployees.toLocaleString(),
       badge: '↑ 2.4%',
-      badgeColor: 'text-emerald-600 bg-emerald-50',
+      badgeType: 'green',
       icon: Users,
-      iconBg: 'bg-indigo-50 text-indigo-600',
+      iconBg: 'bg-indigo-50/80 text-indigo-600',
     },
     {
-      title: 'En Congé Aujourd\'hui',
-      value: leavesPending,
-      badge: "Aujourd'hui",
-      badgeColor: 'text-slate-600 bg-slate-100',
+      title: 'On Leave Today',
+      value: onLeaveToday.toString(),
+      badge: 'Today',
+      badgeType: 'neutral',
       icon: Calendar,
-      iconBg: 'bg-rose-50 text-rose-600',
+      iconBg: 'bg-rose-50 text-rose-500',
     },
     {
-      title: 'Postes Ouverts',
-      value: recruitments,
+      title: 'Open Positions',
+      value: openPositions.toString(),
       badge: '↑ 5',
-      badgeColor: 'text-blue-600 bg-blue-50',
+      badgeType: 'green',
       icon: Briefcase,
-      iconBg: 'bg-blue-50 text-blue-600',
+      iconBg: 'bg-indigo-50/70 text-indigo-500',
     },
     {
-      title: 'Évaluations en Attente',
-      value: pendingEvaluations,
-      badge: 'Action Requise',
-      badgeColor: 'text-rose-600 bg-rose-50',
+      title: 'Pending Evaluations',
+      value: pendingEvaluations.toString(),
+      badge: 'Action Needed',
+      badgeType: 'red',
       icon: ClipboardList,
       iconBg: 'bg-slate-100 text-slate-600',
     },
   ];
 
-  // ─── Employee Growth Chart Data ─────────────────
+  // ─── Chart Data: Employee Growth ─────────────────
   const growthData = [
-    { month: 'Jan', count: Math.max(totalEmployees - 8, 5) },
-    { month: 'Fév', count: Math.max(totalEmployees - 6, 7) },
-    { month: 'Mar', count: Math.max(totalEmployees - 5, 8) },
-    { month: 'Avr', count: Math.max(totalEmployees - 7, 6) },
-    { month: 'Mai', count: Math.max(totalEmployees - 3, 10) },
-    { month: 'Juin', count: Math.max(totalEmployees - 1, 12) },
-    { month: 'Juil', count: totalEmployees },
+    { month: 'Jan', count: 180 },
+    { month: 'Feb', count: 240 },
+    { month: 'Mar', count: 260 },
+    { month: 'Apr', count: 520 },
+    { month: 'May', count: 480 },
+    { month: 'Jun', count: 680 },
+    { month: 'Jul', count: 510 },
   ];
 
-  // ─── Department Distribution Data ───────────────
-  const departments = mockDb.getDepartments?.() || [];
-  const deptDistribution = departments.length > 0
-    ? departments.map((d) => {
-        const deptEmps = employees.filter(e => (typeof e.department === 'object' ? e.department?._id : e.department) === d._id);
-        return { name: d.name, value: deptEmps.length || 1 };
-      })
-    : [
-        { name: 'Recherche & Dév.', value: 45 },
-        { name: 'Ventes (Sales)', value: 35 },
-        { name: 'Marketing', value: 20 },
-      ];
-
-  const deptTotal = deptDistribution.reduce((s, d) => s + d.value, 0);
-  const DONUT_COLORS = ['#1e293b', '#6366f1', '#334155'];
+  // ─── Chart Data: Department Distribution ─────────
+  const deptData = [
+    { name: 'Engineering', value: 45, color: '#0f172a' },
+    { name: 'Sales', value: 35, color: '#5b5ef7' },
+    { name: 'Marketing', value: 20, color: '#064e3b' },
+  ];
 
   // ─── Recent Activity ────────────────────────────
   const recentActivities = [
     {
+      id: 1,
       icon: UserPlus,
-      iconBg: 'bg-blue-50 text-blue-600',
-      text: <><strong>{employees[0]?.firstName || 'Marie'} {employees[0]?.lastName || 'Ndiaye'}</strong> a été embauchée comme <strong>{employees[0]?.position?.title || 'Ingénieur Dév.'}</strong></>,
-      time: 'Il y a 2 heures',
+      iconBg: 'bg-indigo-50 text-indigo-600',
+      title: (
+        <>
+          <span className="font-semibold text-slate-900">Sarah Jenkins</span> was hired as{' '}
+          <span className="text-slate-700">Senior Developer</span>.
+        </>
+      ),
+      time: '2 hours ago',
     },
     {
-      icon: FileCheck,
-      iconBg: 'bg-emerald-50 text-emerald-600',
-      text: <>Demande de congé approuvée pour <strong>{employees[1]?.firstName || 'Cheikh'} {employees[1]?.lastName || 'Diop'}</strong>.</>,
-      time: 'Il y a 5 heures',
+      id: 2,
+      icon: Send,
+      iconBg: 'bg-slate-100 text-slate-700',
+      title: (
+        <>
+          Leave request approved for <span className="font-semibold text-slate-900">Michael Chang</span>.
+        </>
+      ),
+      time: '5 hours ago',
     },
     {
-      icon: ClipboardList,
-      iconBg: 'bg-purple-50 text-purple-600',
-      text: <>Évaluations de performance T3 générées pour le département <strong>Recherche & Dév.</strong></>,
-      time: 'Il y a 1 jour',
+      id: 3,
+      icon: FileText,
+      iconBg: 'bg-slate-100 text-slate-600',
+      title: (
+        <>
+          <span className="font-semibold text-slate-900">Q3 Performance Reviews</span> generated for{' '}
+          <span className="text-slate-700">Engineering department</span>.
+        </>
+      ),
+      time: '1 day ago',
     },
   ];
 
   // ─── Upcoming Anniversaries & Birthdays ─────────
-  const upcomingEvents = employees.slice(0, 3).map((emp, idx) => {
-    const hireDate = emp.hireDate ? new Date(emp.hireDate) : null;
-    const now = new Date();
-    const yearsWorked = hireDate ? now.getFullYear() - hireDate.getFullYear() : idx + 1;
-    const isBirthday = idx === 1;
-
-    return {
-      name: `${emp.firstName} ${emp.lastName}`,
-      photo: emp.photo?.url,
-      initials: `${emp.firstName?.[0] || ''}${emp.lastName?.[0] || ''}`,
-      event: isBirthday ? 'Anniversaire' : `${yearsWorked} ans d'ancienneté`,
-      date: idx === 0 ? 'Demain' : idx === 1 ? '12 Oct' : '15 Oct',
-    };
-  });
+  const upcomingEvents = [
+    {
+      id: 1,
+      name: 'Emily Rodriguez',
+      subtitle: '5 Year Work Anniversary',
+      date: 'Tomorrow',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80',
+    },
+    {
+      id: 2,
+      name: 'David Thompson',
+      subtitle: 'Birthday',
+      date: 'Oct 12',
+      initials: 'DT',
+    },
+    {
+      id: 3,
+      name: 'Robert Chen',
+      subtitle: '1 Year Work Anniversary',
+      date: 'Oct 15',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80',
+    },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
 
-      {/* ─── Header ─────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      {/* ─── Top Header Overview ────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
-          <p className="text-sm text-slate-500 font-medium">
-            Bienvenue, {user?.firstName || 'Admin'}. Voici un résumé de l'activité RH d'aujourd'hui.
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard Overview</h1>
+          <p className="text-sm text-slate-500 font-normal mt-0.5">
+            Welcome back. Here's what's happening today.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm self-start sm:self-auto">
-          Dernière mise à jour : À l'instant
-        </span>
+        <div className="self-start sm:self-auto">
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 shadow-xs">
+            Last updated: Just now
+          </span>
+        </div>
       </div>
 
-      {/* ─── KPI Cards ──────────────────────────────── */}
+      {/* ─── 4 Stat Cards Grid ──────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+            className="relative rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs hover:shadow-sm transition-all"
           >
+            {/* Top row: Icon on left, Badge on right */}
             <div className="flex items-start justify-between">
-              <div className={`h-10 w-10 rounded-xl ${kpi.iconBg} flex items-center justify-center`}>
+              <div className={`h-11 w-11 rounded-2xl ${kpi.iconBg} flex items-center justify-center`}>
                 <kpi.icon className="h-5 w-5" />
               </div>
-              <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-bold ${kpi.badgeColor}`}>
-                {kpi.badge}
-              </span>
+              <div>
+                {kpi.badgeType === 'green' && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
+                    {kpi.badge}
+                  </span>
+                )}
+                {kpi.badgeType === 'neutral' && (
+                  <span className="text-xs font-medium text-slate-500">
+                    {kpi.badge}
+                  </span>
+                )}
+                {kpi.badgeType === 'red' && (
+                  <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600">
+                    {kpi.badge}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="mt-4 text-xs font-semibold text-slate-500">{kpi.title}</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900 tracking-tight">{kpi.value.toLocaleString('fr-FR')}</p>
+
+            {/* Bottom: Label & Large Value */}
+            <div className="mt-5">
+              <p className="text-xs font-medium text-slate-500">{kpi.title}</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{kpi.value}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* ─── Charts Row ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      {/* ─── Middle Charts Row ──────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
         {/* Employee Growth Area Chart */}
-        <div className="lg:col-span-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-base font-bold text-slate-900">Évolution des Effectifs</h3>
-            <span className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
-              Cette Année
-            </span>
+        <div className="lg:col-span-8 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-slate-900">Employee Growth</h3>
+            <button className="rounded-full border border-slate-200 px-3.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+              This Year
+            </button>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={growthData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  fontSize: '12px',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="count"
-                stroke="#6366f1"
-                strokeWidth={2.5}
-                fill="url(#growthGradient)"
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0, fill: '#6366f1' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+
+          {/* Chart container with soft background */}
+          <div className="w-full h-64 rounded-2xl bg-slate-100/60 p-4 pt-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={growthData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="growthFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#818cf8" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#c7d2fe" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis hide />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                  }}
+                />
+                <Area
+                  type="natural"
+                  dataKey="count"
+                  stroke="#5b5ef7"
+                  strokeWidth={3}
+                  fill="url(#growthFill)"
+                  dot={false}
+                  activeDot={{ r: 6, fill: '#5b5ef7', stroke: '#ffffff', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Department Distribution Donut */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-900 mb-4">Répartition par Département</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie
-                data={deptDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={72}
-                paddingAngle={4}
-                dataKey="value"
-                stroke="none"
-              >
-                {deptDistribution.map((_, index) => (
-                  <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                formatter={(value, name) => [`${value} employé(s)`, name]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        {/* Department Distribution Donut Chart */}
+        <div className="lg:col-span-4 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 mb-2">Department Distribution</h3>
+            <div className="h-52 w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={deptData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={58}
+                    outerRadius={84}
+                    paddingAngle={2}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {deptData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                    formatter={(val, name) => [`${val}%`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-          <div className="mt-3 space-y-2">
-            {deptDistribution.map((d, i) => (
-              <div key={d.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
+          {/* Department Breakdown Legend */}
+          <div className="space-y-2.5 pt-2">
+            {deptData.map((item) => (
+              <div key={item.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                    style={{ backgroundColor: item.color }}
                   ></span>
-                  <span className="font-medium text-slate-700">{d.name}</span>
+                  <span className="font-medium text-slate-800">{item.name}</span>
                 </div>
-                <span className="font-bold text-slate-900">
-                  {deptTotal > 0 ? Math.round((d.value / deptTotal) * 100) : 0}%
-                </span>
+                <span className="font-bold text-slate-900">{item.value}%</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ─── Bottom Row ─────────────────────────────── */}
+      {/* ─── Bottom Section ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Recent Activity */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-base font-bold text-slate-900">Activité Récente</h3>
-            <Link to="/reports" className="text-xs font-semibold text-primary hover:underline">
-              Tout voir
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-base font-bold text-slate-900">Recent Activity</h3>
+            <Link to="/reports" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+              View All
             </Link>
           </div>
-          <div className="space-y-4">
-            {recentActivities.map((act, idx) => (
-              <div key={idx} className="flex items-start gap-3.5">
-                <div className={`h-9 w-9 rounded-xl ${act.iconBg} flex items-center justify-center shrink-0`}>
+          <div className="space-y-5">
+            {recentActivities.map((act) => (
+              <div key={act.id} className="flex items-start gap-4">
+                <div className={`h-10 w-10 rounded-full ${act.iconBg} flex items-center justify-center shrink-0`}>
                   <act.icon className="h-4 w-4" />
                 </div>
-                <div>
-                  <p className="text-sm text-slate-700 leading-snug">{act.text}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{act.time}</p>
+                <div className="flex-1 text-xs">
+                  <p className="text-slate-800 leading-snug">{act.title}</p>
+                  <p className="text-slate-400 mt-0.5">{act.time}</p>
                 </div>
               </div>
             ))}
@@ -309,33 +358,31 @@ const Dashboard = () => {
         </div>
 
         {/* Upcoming Anniversaries & Birthdays */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-900 mb-5">Anniversaires & Événements à venir</h3>
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs">
+          <h3 className="text-base font-bold text-slate-900 mb-6">Upcoming Anniversaries & Birthdays</h3>
           <div className="space-y-4">
-            {upcomingEvents.map((ev, idx) => (
-              <div key={idx} className="flex items-center justify-between">
+            {upcomingEvents.map((event) => (
+              <div key={event.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
                   <div className="h-10 w-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center shrink-0">
-                    {ev.photo ? (
-                      <img src={ev.photo} alt="" className="h-full w-full object-cover" />
+                    {event.avatar ? (
+                      <img src={event.avatar} alt={event.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xs font-bold text-slate-500">{ev.initials}</span>
+                      <span className="text-xs font-semibold text-slate-600">{event.initials}</span>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900 leading-tight">{ev.name}</p>
-                    <p className="text-xs text-slate-400 flex items-center gap-1">
-                      {ev.event.includes('Anniversaire') ? <Cake className="h-3 w-3" /> : <Award className="h-3 w-3" />}
-                      {ev.event}
-                    </p>
+                    <p className="text-xs font-semibold text-slate-900">{event.name}</p>
+                    <p className="text-[11px] text-slate-400">{event.subtitle}</p>
                   </div>
                 </div>
-                <span className="text-xs font-semibold text-slate-600">{ev.date}</span>
+                <span className="text-xs font-medium text-slate-600">{event.date}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
+
     </div>
   );
 };

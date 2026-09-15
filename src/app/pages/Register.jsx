@@ -56,7 +56,7 @@ const Register = () => {
     <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-100/50">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-bold text-slate-900">Créer un compte</h2>
-        <p className="mt-2 text-sm text-slate-500">Commencez dès aujourd'hui avec Nexus HR</p>
+        <p className="mt-2 text-sm text-slate-500">Commencez dès aujourd'hui avec HRNova</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

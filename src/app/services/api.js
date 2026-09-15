@@ -1,8 +1,9 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'https://hrms-backend-azqg.onrender.com/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-  withCredentials: true,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,18 +72,22 @@ api.interceptors.response.use(
 
       try {
         const refreshResponse = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/refresh`,
-          { refreshToken },
-          { withCredentials: true }
+          `${API_URL}/auth/login/refresh/`,
+          { refresh: refreshToken }
         );
 
-        const { accessToken } = refreshResponse.data.data;
-        localStorage.setItem('accessToken', accessToken);
+        const newAccessToken = refreshResponse.data.access;
+        const newRefreshToken = refreshResponse.data.refresh || refreshToken;
 
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+        localStorage.setItem('accessToken', newAccessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
 
-        processQueue(null, accessToken);
+        api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+
+        processQueue(null, newAccessToken);
         isRefreshing = false;
 
         return api(originalRequest);

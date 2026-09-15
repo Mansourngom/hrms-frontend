@@ -31,14 +31,15 @@ import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
 import Profile from '../pages/Profile';
 import HelpCenter from '../pages/HelpCenter';
+import LandingPage from '../pages/LandingPage';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 
 const AppRouter = () => {
   return (
     <Routes>
-      {/* Redirection from Root */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Landing Page on Root */}
+      <Route path="/" element={<LandingPage />} />
 
       {/* Guest/Public Routes */}
       <Route element={<PublicRoute />}>

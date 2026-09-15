@@ -7,7 +7,7 @@ import {
   TrendingUp, GraduationCap, FileText, BarChart3, Settings,
   HelpCircle, LogOut, Bell, MessageSquare, Search, Menu,
   X, ChevronDown, User, ChevronLeft, ChevronRight, Globe,
-  Shield, Check, Send, Sparkles, BookOpen, LifeBuoy
+  Shield, Check, Send, Sparkles, BookOpen, LifeBuoy, Moon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -131,12 +131,12 @@ const DashboardLayout = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex h-20 items-center justify-between px-4 border-b border-slate-700/50 relative">
           <div className={`flex items-center gap-3 overflow-hidden transition-all duration-350 ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white font-bold text-lg shadow-md shadow-primary/20">
-              N
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-base shadow-md shadow-blue-500/20">
+              HN
             </div>
             {!sidebarCollapsed && (
               <div className="truncate">
-                <h1 className="text-base font-bold text-white leading-tight">Nexus HR</h1>
+                <h1 className="text-base font-bold text-white leading-tight">HRNova</h1>
                 <p className="text-xs text-slate-400 font-medium">Enterprise Suite</p>
               </div>
             )}
@@ -167,35 +167,17 @@ const DashboardLayout = ({ children }) => {
         )}
 
         {/* Action Button */}
-        <div className={`px-4 py-3 transition-all ${sidebarCollapsed ? 'text-center' : ''}`}>
-          {sidebarCollapsed ? (
-            <button
-              onClick={() => navigate('/attendance')}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white transition-all hover:bg-primary-hover shadow-sm mx-auto"
-            >
-              <span className="text-lg">+</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => navigate('/attendance')}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-hover shadow-sm shadow-primary/10"
-            >
-              <span className="text-lg">+</span> {t('newRequest')}
-            </button>
-          )}
-        </div>
-
         {/* Sidebar Nav Items */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto px-3.5 py-4">
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               title={sidebarCollapsed ? item.name : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                `flex items-center gap-3.5 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-white/10 text-white border-l-4 border-blue-400 pl-3 font-bold'
+                    ? 'bg-[#5b5ef7] text-white shadow-lg shadow-[#5b5ef7]/25 font-semibold'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 } ${sidebarCollapsed ? 'justify-center px-0 py-3.5' : ''}`
               }
@@ -206,8 +188,28 @@ const DashboardLayout = ({ children }) => {
           ))}
         </nav>
 
+        {/* Sidebar Quick Action Button */}
+        <div className="p-4 border-t border-slate-800/60">
+          {sidebarCollapsed ? (
+            <button
+              onClick={() => navigate('/attendance')}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 shadow-md mx-auto transition-all"
+              title="Quick Action"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/attendance')}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#0b101b] border border-slate-700/80 py-3 text-sm font-medium text-white shadow-md hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              <span className="text-base font-bold">+</span> Quick Action
+            </button>
+          )}
+        </div>
+
         {/* Sidebar Footer */}
-        <div className="border-t border-slate-700/50 p-3 space-y-1">
+        <div className="border-t border-slate-800/40 p-3 space-y-1">
           <button
             onClick={() => setHelpModalOpen(true)}
             title={sidebarCollapsed ? t('helpCenter') : undefined}
@@ -244,13 +246,13 @@ const DashboardLayout = ({ children }) => {
               <Menu className="h-5 w-5" />
             </button>
             <div className="relative max-w-md w-full hidden md:block">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                 <Search className="h-4 w-4" />
               </span>
               <input
                 type="text"
-                placeholder={t('search')}
-                className="w-full rounded-xl border border-slate-100 bg-slate-50/50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-slate-200 focus:bg-white focus:ring-1 focus:ring-slate-200"
+                placeholder="Search employees, documents..."
+                className="w-full rounded-full border border-slate-200/80 bg-slate-100/70 py-2.5 pl-10 pr-4 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/10"
               />
             </div>
           </div>
@@ -267,12 +269,12 @@ const DashboardLayout = ({ children }) => {
                     setNotificationsOpen(!notificationsOpen);
                     setMessagesOpen(false);
                   }}
-                  className="relative rounded-xl p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all"
+                  className="relative rounded-full p-2.5 text-slate-600 hover:bg-slate-100 transition-all"
                   title="Notifications"
                 >
                   <Bell className="h-5 w-5" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
                   )}
                 </button>
 
@@ -378,10 +380,19 @@ const DashboardLayout = ({ children }) => {
                 )}
               </div>
 
+              {/* 🌙 Dark Mode / Theme Toggle Icon */}
+              <button
+                onClick={() => toast.success('Mode sombre bientôt disponible')}
+                className="rounded-full p-2.5 text-slate-600 hover:bg-slate-100 transition-all"
+                title="Mode Sombre"
+              >
+                <Moon className="h-5 w-5" />
+              </button>
+
               {/* ❓ Help Button */}
               <button
                 onClick={() => setHelpModalOpen(true)}
-                className="rounded-xl p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all"
+                className="rounded-full p-2.5 text-slate-600 hover:bg-slate-100 transition-all"
                 title="Aide & Support"
               >
                 <HelpCircle className="h-5 w-5" />
